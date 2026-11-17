@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Checkout | Breckenridge Distillery</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="assets/img/logo-mtn.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600&family=Mulish:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body data-page="checkout" class="co">
+<header class="co-head"><div class="hdr"><a class="brand" href="index.html"><img class="logo" src="assets/img/logo.webp" alt="Breckenridge Distillery" width="123" height="58"></a><a class="back" href="index.html" data-back>&larr; Continue shopping</a></div></header>
+
+<div class="co-wrap" id="co">
+  <div class="co-main"><div>
+    <form id="co-form" autocomplete="off" novalidate>
+      <div class="small" style="text-align:center;margin-bottom:10px">Express checkout</div>
+      <div class="express"><button type="button" class="sp">shop<span style="font-weight:400">Pay</span></button><button type="button" class="ap">&#63743; Pay</button><button type="button" class="gp">G Pay</button></div>
+      <div class="or">OR</div>
+
+      <h2>Contact</h2>
+      <div class="fld"><input id="email" type="email" placeholder="Email"></div>
+      <label class="chk small" style="margin-bottom:6px"><input type="checkbox" checked> Email me with news and offers from Breckenridge Distillery</label>
+
+      <h2>Delivery</h2>
+      <div class="seg"><button type="button" data-mode="single">Ship to one address</button><button type="button" data-mode="multi">Ship to multiple recipients</button></div>
+
+      <div id="single-box">
+        <div class="fld"><select disabled><option>United States</option></select></div>
+        <div class="frow"><div class="fld"><input id="fname" placeholder="First name"></div><div class="fld"><input id="lname" placeholder="Last name"></div></div>
+        <div class="fld"><input id="addr" placeholder="Address"></div>
+        <div class="frow3"><div class="fld"><input id="city" placeholder="City"></div><div class="fld"><select id="state"><option value="">State</option></select></div><div class="fld"><input id="zip" placeholder="ZIP code" inputmode="numeric" maxlength="5"></div></div>
+        <div class="try-zips">Try:
+          <button type="button" data-tryzip="90403|3212 Wilshire Blvd|Santa Monica">Santa Monica, CA (Gopuff)</button>
+          <button type="button" data-tryzip="40204|1300 Bardstown Rd|Louisville">Louisville, KY (Gopuff)</button>
+          <button type="button" data-tryzip="80202|1701 Wynkoop St|Denver">Denver, CO</button>
+          <button type="button" data-tryzip="78701|500 Congress Ave|Austin">Austin, TX</button>
+          <button type="button" data-tryzip="84101|50 W Broadway|Salt Lake City">Salt Lake City, UT</button>
+        </div>
+        <h2>Shipping method</h2>
+        <div id="co-rates"></div>
+        <div id="co-pkgs"></div>
+      </div>
+
+      <div id="multi-box" hidden>
+        <div class="msg info">Every recipient gets the items in your cart. Each gift is sold and shipped by a licensed retailer in the recipient's state.</div>
+        <div class="rbtns"><button type="button" id="csv-recip">Upload recipient list (CSV)</button><button type="button" id="add-recip">+ Add recipient</button><span class="small" style="align-self:center"><span id="recips-n">0</span> recipients</span></div>
+        <div class="msg muted" id="recips-note" hidden></div>
+        <div class="recips-scroll"><table class="recips"><thead><tr><th>Recipient</th><th>Company</th><th>ZIP</th><th></th></tr></thead><tbody id="recips-body"></tbody></table></div>
+      </div>
+
+      <h2>Gift options</h2>
+      <label class="chk"><input type="checkbox" id="gift-on"> This order is a gift</label>
+      <div id="gift-box" hidden style="margin-top:10px">
+        <div class="fld"><textarea id="gift-msg" placeholder="Gift message, printed on the packing slip. Prices are hidden on gift orders."></textarea></div>
+      </div>
+
+      <h2>Payment</h2>
+      <div class="small" style="margin:-6px 0 10px">All transactions are secure and encrypted.</div>
+      <div class="paybox">
+        <div class="ph2"><b>Credit card</b><span class="small">Visa · Mastercard · Amex</span></div>
+        <div class="pb">
+          <div class="msg muted" style="margin-bottom:10px">Demo: payment fields are disabled and no payment is taken.</div>
+          <div class="fld"><input placeholder="Card number" disabled></div>
+          <div class="frow"><div class="fld"><input placeholder="Expiration date (MM / YY)" disabled></div><div class="fld"><input placeholder="Security code" disabled></div></div>
+          <div class="fld"><input placeholder="Name on card" disabled></div>
+        </div>
+      </div>
+      <label class="chk small" style="margin-top:12px"><input type="checkbox" checked> I confirm I am 21 or older. An adult signature or ID check is required at delivery.</label>
+      <button class="btn dark place" id="place" type="submit">Place demo order</button>
+      <p class="small" style="text-align:center;margin-top:12px">Spirits are sold by licensed retailers. Merchandise is sold by Breckenridge Distillery. Checkout powered by AccelPay on Shopify.</p>
+    </form>
+  </div></div>
+  <aside class="co-side"><div id="co-sum"></div></aside>
+</div>
+<div class="demo-tag"><span>Demo by AccelPay</span><button id="notes-toggle">Hide demo notes</button><a href="index.html#team" style="color:var(--gold)">Team notes</a></div>
+
+<script src="data.js?v=1"></script>
+<script>
+  (function () { var s = document.getElementById('state'); 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ').forEach(function (c) { var o = document.createElement('option'); o.value = c; o.textContent = c; s.appendChild(o); }); })();
+</script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
