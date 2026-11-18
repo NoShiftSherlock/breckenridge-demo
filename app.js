@@ -58,6 +58,34 @@
   const retailerLabel = r => r.retailer ? r.retailer.name + ', ' + r.retailer.city + ', ' + r.st : 'a licensed retailer in ' + stName(r.st);
   const isGpProduct = h => BD.gopuff.locs.some(l => l[2].indexOf(h) >= 0);
 
+  // Colorado: no shipping. Local delivery from Denver-metro retailers only.
+  const CO_MSG = 'Local delivery in the Denver metro only for now. Shipping within Colorado isn\'t available.';
+  const CO_STORES = [
+    { name: 'Mayfair Liquors', city: 'Denver', zip: '80220', zips: ['80220', '80207', '80238', '80230', '80205', '80206', '80224', '80246', '80209', '80218'] },
+    { name: 'Heritage Wine and More (Bevy\'s)', city: 'Centennial', zip: '80112', zips: (function () { const z = ['80112']; for (let n = 80110; n <= 80130; n++) z.push(String(n)); return z; })() }
+  ];
+  const coStoreFor = zip => CO_STORES.find(s => s.zips.indexOf(zip) >= 0) || null;
+  const MT = 'America/Denver';
+  function mtParts(d) {
+    const o = {}; new Intl.DateTimeFormat('en-US', { timeZone: MT, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).formatToParts(d).forEach(x => { o[x.type] = x.value; });
+    return { y: +o.year, m: +o.month, d: +o.day, h: (+o.hour) % 24 };
+  }
+  function mtDays() {
+    const out = [], now = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now.getTime() + i * 864e5); const p = mtParts(d);
+      const lbl = new Intl.DateTimeFormat('en-US', { timeZone: MT, weekday: 'short', month: 'short', day: 'numeric' }).format(d);
+      out.push({ key: p.y + '-' + p.m + '-' + p.d, label: (i === 0 ? 'Today, ' : i === 1 ? 'Tomorrow, ' : '') + lbl, today: i === 0 });
+    }
+    return out;
+  }
+  const hr = h => (h % 12 || 12) + (h < 12 ? 'am' : 'pm');
+  function mtWindows(today) {
+    const start = today ? Math.max(10, mtParts(new Date()).h + 2) : 10, out = [];
+    for (let h = start; h < 21; h++) out.push({ key: String(h), label: hr(h) + ' to ' + hr(h + 1) });
+    return out;
+  }
+
   // ------------------------------------------------------------------ state
   const LS = 'bd-demo-v1';
   let S = load() || { items: [], gift: { on: false, msg: '' }, mode: 'single', recipients: [] };
@@ -212,6 +240,7 @@
     const p = P[h];
     if (p && p.merch) return 'Ships from Breckenridge Distillery in Colorado. Add it to the same order as your spirits.';
     if (r.blocked) return '<span style="color:var(--red)">We can\'t ship spirits to ' + stName(r.st) + ' yet. Merchandise still ships.</span>';
+    if (r.st === 'CO') { const cs = coStoreFor(zip); return cs ? '<b>Free local delivery in 60 to 120 minutes</b> from ' + esc(cs.name) + ', ' + esc(cs.city) + '. Or schedule a 1-hour window up to 7 days out.' : '<span style="color:var(--red)">' + CO_MSG + '</span>'; }
     const shipLine = 'Ships from ' + esc(retailerLabel(r)) + ', 2 to 5 business days.';
     if (r.gp && r.gp.handles.has(h)) return '<div class="ok"><img src="' + GP_ICON + '" alt="Gopuff"><div><b>Delivered in about 30 minutes by Gopuff</b> (' + esc(r.gp.city) + '). Or ' + shipLine.charAt(0).toLowerCase() + shipLine.slice(1) + '</div></div>';
     if (r.gp) return '<div class="ok"><img src="' + GP_ICON + '" alt="Gopuff"><div>Gopuff delivers to ' + zip + ', with Breckenridge Bourbon and more in about 30 minutes. This bottle ' + shipLine.replace('Ships', 'ships') + '</div></div>';
@@ -257,7 +286,7 @@
         :
         '<div class="pdp-box" data-zipcheck="' + h + '"><h4>' + (gp ? '<img src="' + GP_ICON + '" alt="Gopuff">' : '') + 'Get it today or have it shipped</h4>' +
         '<div class="row"><input type="text" inputmode="numeric" maxlength="5" placeholder="Enter your ZIP code"><button class="btn dark go">Check</button></div>' +
-        '<div class="small" style="margin-top:6px">Try ' + (gp ? '<a href="#" data-try="90403">90403</a> (Santa Monica), <a href="#" data-try="40204">40204</a> (Louisville), ' : '') + '<a href="#" data-try="80202">80202</a> (Denver), <a href="#" data-try="78701">78701</a> (Austin)</div>' +
+        '<div class="small" style="margin-top:6px">Try ' + (gp ? '<a href="#" data-try="90403">90403</a> (Santa Monica), <a href="#" data-try="40204">40204</a> (Louisville), ' : '') + '<a href="#" data-try="80220">80220</a> (Denver), <a href="#" data-try="78701">78701</a> (Austin)</div>' +
         '<div class="zipres"></div></div>') +
       '<div class="pdp-box"><label class="chk"><input type="checkbox" id="pdp-gift"' + (S.gift.on ? ' checked' : '') + '> This is a gift</label><textarea id="pdp-msg" placeholder="Gift message (printed on the packing slip)" ' + (S.gift.on ? '' : 'hidden') + '>' + esc(S.gift.msg) + '</textarea>' +
       '<div class="small" style="margin-top:6px">Sending to a team or a client list? <a href="gifting.html">Corporate and bulk gifting</a></div></div>' +
@@ -283,7 +312,27 @@
   }
 
   // ------------------------------------------------------------------ checkout
-  const co = { rate: null, done: false };
+  const co = { rate: null, done: false, when: { mode: 'now', day: '', win: '' } };
+  function whenText() {
+    const w = co.when;
+    if (w.mode !== 'schedule') return 'Delivered in 60 to 120 minutes.';
+    const d = mtDays().find(x => x.key === w.day) || mtDays()[0];
+    const wins = mtWindows(d.today); const win = wins.find(x => x.key === w.win) || wins[0];
+    return win ? 'Scheduled for ' + d.label + ', ' + win.label + ' Mountain time.' : 'Delivered in 60 to 120 minutes.';
+  }
+  function scheduleHTML() {
+    const w = co.when, days = mtDays();
+    if (!days.some(d => d.key === w.day)) w.day = days[0].key;
+    let d = days.find(x => x.key === w.day);
+    let wins = mtWindows(d.today);
+    if (!wins.length) { w.day = days[1].key; d = days[1]; wins = mtWindows(false); }
+    if (!wins.some(x => x.key === w.win)) w.win = wins[0].key;
+    return '<h2>Delivery time</h2><div class="rates">' +
+      '<label class="rate' + (w.mode === 'now' ? ' on' : '') + '" data-when="now"><input type="radio" name="when"' + (w.mode === 'now' ? ' checked' : '') + '><span class="tx"><b>Deliver now</b><span>60 to 120 minutes</span></span><span class="p">FREE</span></label>' +
+      '<label class="rate' + (w.mode === 'schedule' ? ' on' : '') + '" data-when="schedule"><input type="radio" name="when"' + (w.mode === 'schedule' ? ' checked' : '') + '><span class="tx"><b>Schedule</b><span>Pick a day up to 7 days out, then a 1-hour window. Mountain time.</span></span><span class="p">FREE</span></label></div>' +
+      (w.mode === 'schedule' ? '<div class="frow" style="margin-top:10px"><div class="fld"><select id="when-day">' + days.map(x => '<option value="' + x.key + '"' + (x.key === w.day ? ' selected' : '') + '>' + x.label + '</option>').join('') + '</select></div><div class="fld"><select id="when-win">' + wins.map(x => '<option value="' + x.key + '"' + (x.key === w.win ? ' selected' : '') + '>' + x.label + ' MT</option>').join('') + '</select></div></div>' : '') +
+      '<div class="dnote"><b>Demo note</b>Same Colorado delivery flow we run with LAWS Whiskey House in Denver.</div>';
+  }
   function legsSingle(r) {
     // returns { options:[{id,title,sub,price,icon}], legs per option }
     const alc = S.items.filter(i => !P[i.h].merch), mer = S.items.filter(i => P[i.h].merch);
@@ -294,6 +343,13 @@
     const merchLeg = items => ({ who: 'Ships from Breckenridge Distillery, Breckenridge, CO', how: 'Ground, 3 to 5 business days', items: items });
     if (r.blocked) {
       return { blocked: true, opts: mer.length && !alc.length ? [{ id: 'ship', title: 'Standard shipping', sub: '3 to 5 business days', price: shipFee, legs: [merchLeg(mer)] }] : [] };
+    }
+    if (r.st === 'CO' && alc.length) {
+      const cs = coStoreFor(r.zip);
+      if (!cs) return { coBlocked: true, opts: [] };
+      const legs = [{ who: 'Local delivery from ' + cs.name + ', ' + cs.city + ', CO', how: whenText() + ' ID checked at the door.', items: alc, local: true }];
+      if (mer.length) legs.push(merchLeg(mer));
+      return { opts: [{ id: 'local', title: 'Local delivery', sub: cs.name + ', ' + cs.city + '. 60 to 120 minutes, or schedule a window.' + (mer.length ? ' Merch ships separately' + (shipFee ? ' (' + fmt(shipFee) + ').' : ', free.') : ''), price: mer.length ? shipFee : 0, legs: legs, icon: 'truck' }] };
     }
     const shipLegs = []; if (alc.length) shipLegs.push(retailLeg(alc)); if (mer.length) shipLegs.push(merchLeg(mer));
     opts.push({ id: 'ship', title: 'Standard shipping', sub: alc.length ? 'Licensed retailer in ' + stName(r.st) + ', 2 to 5 business days' : '3 to 5 business days', price: shipFee, legs: shipLegs, icon: 'truck' });
@@ -331,8 +387,11 @@
       if (!r) {
         ratesEl.innerHTML = '<div class="msg muted">Enter your shipping address to see delivery options.</div>'; pk.innerHTML = ''; co.rate = null;
       } else {
+        if (r.st === 'CO') scheduleHTML();
         const L = legsSingle(r);
-        if (L.blocked && !L.opts.length) {
+        if (L.coBlocked) {
+          ratesEl.innerHTML = '<div class="msg warn">' + CO_MSG + '</div>'; pk.innerHTML = ''; co.rate = null; co.legs = null;
+        } else if (L.blocked && !L.opts.length) {
           ratesEl.innerHTML = '<div class="msg warn">We can\'t ship spirits to ' + stName(r.st) + ' yet. Remove the spirits to ship merchandise only, or try another address.</div>'; pk.innerHTML = ''; co.rate = null;
         } else {
           if (!co.rate || !L.opts.some(o => o.id === co.rate)) co.rate = L.opts[0].id;
@@ -341,10 +400,14 @@
             '<span class="tx"><b>' + esc(o.title) + '</b><span>' + esc(o.sub) + '</span></span><span class="p">' + (o.price ? fmt(o.price) : 'FREE') + '</span></label>').join('') + '</div>';
           $$('[data-rate]', ratesEl).forEach(l => l.onclick = () => { co.rate = l.dataset.rate; renderCheckout(); });
           const cur = L.opts.find(o => o.id === co.rate);
-          ship = cur.price; shipLabel = co.rate === 'gopuff' ? 'Delivery' : 'Shipping'; ready = true;
-          pk.innerHTML = '<div class="small" style="margin:14px 0 8px">How this order is fulfilled' + (cur.legs.length > 1 ? ' (' + cur.legs.length + ' packages, one checkout)' : '') + '</div>' +
+          ship = cur.price; shipLabel = (co.rate === 'gopuff' || co.rate === 'local') ? 'Delivery' : 'Shipping'; ready = true;
+          pk.innerHTML = (co.rate === 'local' ? scheduleHTML() : '') + '<div class="small" style="margin:14px 0 8px">How this order is fulfilled' + (cur.legs.length > 1 ? ' (' + cur.legs.length + ' packages, one checkout)' : '') + '</div>' +
             cur.legs.map(l => '<div class="pkg"><div class="ph">' + (l.gp ? '<img src="' + GP_ICON + '" alt="" style="width:18px;height:18px;border-radius:4px;display:inline-block;vertical-align:-3px;margin-right:6px">' : '') + esc(l.who) + '</div><div class="small">' + esc(l.how) + '</div><ul>' + l.items.map(i => '<li>' + i.qty + ' &times; ' + esc(P[i.h].name) + (i.plan === 'club' ? ' (Cask Club)' : '') + '</li>').join('') + '</ul></div>').join('');
           co.legs = cur.legs; co.route = r;
+          $$('[data-when]', pk).forEach(l => l.onclick = () => { co.when.mode = l.dataset.when; renderCheckout(); });
+          const wd = $('#when-day', pk), ww = $('#when-win', pk);
+          if (wd) wd.onchange = () => { co.when.day = wd.value; co.when.win = ''; renderCheckout(); };
+          if (ww) ww.onchange = () => { co.when.win = ww.value; renderCheckout(); };
         }
       }
     } else {
@@ -356,6 +419,11 @@
         if (!r) { rt.className = 'route'; rt.textContent = 'Enter a ZIP'; return; }
         const hasAlc = S.items.some(it => !P[it.h].merch);
         if (r.blocked && hasAlc) { rt.className = 'route bad'; rt.textContent = 'Spirits cannot ship to ' + stName(r.st) + '. Not charged.'; return; }
+        if (r.st === 'CO' && hasAlc) {
+          const cs = coStoreFor(r.zip);
+          if (!cs) { rt.className = 'route bad'; rt.textContent = CO_MSG + ' Not charged.'; return; }
+          units++; rt.className = 'route'; rt.textContent = 'Free local delivery from ' + cs.name + ', ' + cs.city; return;
+        }
         units++; ship += perShip;
         rt.className = 'route'; rt.textContent = hasAlc ? 'Ships from ' + retailerLabel(r) : 'Ships from Breckenridge Distillery';
       });
@@ -378,7 +446,7 @@
     co.total = total; co.units = units; co.ship = ship;
   }
   const SAMPLE = [
-    { name: 'Jordan Lee', co: 'Summit Partners', zip: '80202', msg: 'Thanks for a great year. Cheers from the team.' },
+    { name: 'Jordan Lee', co: 'Summit Partners', zip: '80206', msg: 'Thanks for a great year. Cheers from the team.' },
     { name: 'Priya Shah', co: 'Summit Partners', zip: '78701', msg: '' },
     { name: 'Marcus Reed', co: 'Northline Capital', zip: '11201', msg: '' },
     { name: 'Erin Walsh', co: 'Northline Capital', zip: '60614', msg: '' },
@@ -423,12 +491,13 @@
     let body = '';
     if (!multi) {
       if (!co.legs) return;
-      co.legs.forEach(l => { if (l.gp) tags.push('gopuff-30-min'); else if (/Breckenridge Distillery/.test(l.who)) tags.push('merch-fulfillment'); else tags.push('retailer: ' + l.who.replace('Ships from ', '')); });
-      body = '<p>' + co.legs.length + (co.legs.length > 1 ? ' shipments, one order.' : ' shipment.') + '</p>' + co.legs.map(l => '<div class="pkg"><div class="ph">' + esc(l.who) + '</div><div class="small">' + esc(l.how) + '</div><ul>' + l.items.map(i => '<li>' + i.qty + ' &times; ' + esc(P[i.h].name) + '</li>').join('') + '</ul></div>').join('');
+      co.legs.forEach(l => { if (l.local) { tags.push('local-delivery: ' + l.who.replace('Local delivery from ', '')); tags.push(co.when.mode === 'schedule' ? 'scheduled-delivery' : 'deliver-now'); } else if (l.gp) tags.push('gopuff-30-min'); else if (/Breckenridge Distillery/.test(l.who)) tags.push('merch-fulfillment'); else tags.push('retailer: ' + l.who.replace('Ships from ', '')); });
+      body = '<p>' + co.legs.length + (co.legs.length > 1 ? ' shipments, one order.' : (co.legs[0].local ? ' delivery.' : ' shipment.')) + '</p>' + co.legs.map(l => '<div class="pkg"><div class="ph">' + esc(l.who) + '</div><div class="small">' + esc(l.how) + '</div><ul>' + l.items.map(i => '<li>' + i.qty + ' &times; ' + esc(P[i.h].name) + '</li>').join('') + '</ul></div>').join('');
     } else {
       tags.push('multi-ship', 'corporate-gift');
-      const ok = S.recipients.filter(r => { const rt = routeZip(r.zip); return rt && !(rt.blocked && S.items.some(it => !P[it.h].merch)); });
-      body = '<p>' + ok.length + ' recipients, one order. Each gift is routed to a licensed retailer in the recipient\'s state.</p>' + ok.map(r => { const rt = routeZip(r.zip); return '<div class="pkg"><div class="ph">' + esc(r.name || 'Recipient') + (r.co ? ' <span>' + esc(r.co) + '</span>' : '') + '</div><div class="small">' + esc(r.zip) + ' · Ships from ' + esc(retailerLabel(rt)) + '</div></div>'; }).join('');
+      const hasA = S.items.some(it => !P[it.h].merch);
+      const ok = S.recipients.filter(r => { const rt = routeZip(r.zip); return rt && !(rt.blocked && hasA) && !(rt.st === 'CO' && hasA && !coStoreFor(r.zip)); });
+      body = '<p>' + ok.length + ' recipients, one order. Each gift is routed to a licensed retailer in the recipient\'s state.</p>' + ok.map(r => { const rt = routeZip(r.zip); const cs = rt.st === 'CO' && hasA ? coStoreFor(r.zip) : null; return '<div class="pkg"><div class="ph">' + esc(r.name || 'Recipient') + (r.co ? ' <span>' + esc(r.co) + '</span>' : '') + '</div><div class="small">' + esc(r.zip) + ' · ' + (cs ? 'Local delivery from ' + esc(cs.name) + ', ' + esc(cs.city) : 'Ships from ' + esc(retailerLabel(rt))) + '</div></div>'; }).join('');
     }
     if (S.gift.on) tags.push('gift');
     if (S.items.some(i => i.plan === 'club')) tags.push('subscription: cask-club');
