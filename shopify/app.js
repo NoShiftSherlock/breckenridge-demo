@@ -5,12 +5,12 @@
  * No payment is taken and no order is placed. */
 (function () {
   const BD = window.BD;
-  const P = BD.products;
+  const P = BD.products; Object.values(P).forEach(p => { if (p.img && p.img.indexOf('assets/') === 0) p.img = '../' + p.img; });
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = c => '$' + (c / 100).toFixed(2);
-  const GP_ICON = 'assets/img/gopuff-icon.png';
+  const GP_ICON = '../assets/img/gopuff-icon.png';
 
   // Illustrative commercial settings for the demo
   const FREE_SHIP = 9900;      // their live promo: free delivery on $99+ (code BRECKTHEHALLS)
@@ -116,7 +116,7 @@
       h.outerHTML =
         '<div class="announce">FREE Delivery on Orders $99+ thru 1/1/2027. Use Code BRECKTHEHALLS<a href="shop.html?c=spirits">Shop now</a></div>' +
         '<header class="site"><div class="hdr">' +
-        '<a class="brand" href="index.html"><img class="logo" src="assets/img/logo.webp" alt="Breckenridge Distillery" width="123" height="58"><img class="broncos" src="assets/img/broncos.png" alt="Hometown whiskey of the Denver Broncos" width="132" height="26"></a>' +
+        '<a class="brand" href="index.html"><img class="logo" src="../assets/img/logo.webp" alt="Breckenridge Distillery" width="123" height="58"><img class="broncos" src="../assets/img/broncos.png" alt="Hometown whiskey of the Denver Broncos" width="132" height="26"></a>' +
         '<nav class="main">' + NAV.map(n => '<a href="' + n[0] + '"' + (cur === n[2] ? ' class="on"' : '') + '>' + n[1] + '</a>').join('') + '</nav>' +
         '<div class="hdr-icons"><button class="cart-btn" data-cart-open aria-label="Open cart">' + ICON_CART + '<span class="count" data-count hidden>0</span></button>' +
         '<button class="burger" id="burger" aria-label="Menu">' + ICON_MENU + '</button></div>' +
@@ -142,7 +142,7 @@
     // age gate (once per session)
     let ok = false; try { ok = sessionStorage.getItem('bd-age') === '1'; } catch (e) {}
     if (!ok && page !== 'checkout') {
-      document.body.insertAdjacentHTML('beforeend', '<div class="agegate" id="agegate"><div><img src="assets/img/logo-mtn.webp" alt="Breckenridge Distillery"><h2>To enter this site you must be of legal drinking age</h2><div class="b"><button class="btn" id="age-yes">Enter</button><button class="btn exit" id="age-no">Exit</button></div><p class="small" style="color:#999;margin-top:22px">&copy;2026 Breckenridge Distillery, Breckenridge, Colorado, USA. Please Drink Responsibly.</p></div></div>');
+      document.body.insertAdjacentHTML('beforeend', '<div class="agegate" id="agegate"><div><img src="../assets/img/logo-mtn.webp" alt="Breckenridge Distillery"><h2>To enter this site you must be of legal drinking age</h2><div class="b"><button class="btn" id="age-yes">Enter</button><button class="btn exit" id="age-no">Exit</button></div><p class="small" style="color:#999;margin-top:22px">&copy;2026 Breckenridge Distillery, Breckenridge, Colorado, USA. Please Drink Responsibly.</p></div></div>');
       $('#age-yes').onclick = () => { try { sessionStorage.setItem('bd-age', '1'); } catch (e) {} $('#agegate').remove(); };
       $('#age-no').onclick = () => { location.href = 'https://www.responsibility.org/'; };
     }
