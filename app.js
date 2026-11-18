@@ -492,7 +492,7 @@
     if (!multi) {
       if (!co.legs) return;
       co.legs.forEach(l => { if (l.local) { tags.push('local-delivery: ' + l.who.replace('Local delivery from ', '')); tags.push(co.when.mode === 'schedule' ? 'scheduled-delivery' : 'deliver-now'); } else if (l.gp) tags.push('gopuff-30-min'); else if (/Breckenridge Distillery/.test(l.who)) tags.push('merch-fulfillment'); else tags.push('retailer: ' + l.who.replace('Ships from ', '')); });
-      body = '<p>' + co.legs.length + (co.legs.length > 1 ? ' shipments, one order.' : (co.legs[0].local ? ' delivery.' : ' shipment.')) + '</p>' + co.legs.map(l => '<div class="pkg"><div class="ph">' + esc(l.who) + '</div><div class="small">' + esc(l.how) + '</div><ul>' + l.items.map(i => '<li>' + i.qty + ' &times; ' + esc(P[i.h].name) + '</li>').join('') + '</ul></div>').join('');
+      body = '<p>' + co.legs.length + (co.legs.length > 1 ? ' packages, one order.' : (co.legs[0].local ? ' delivery.' : ' shipment.')) + '</p>' + co.legs.map(l => '<div class="pkg"><div class="ph">' + esc(l.who) + '</div><div class="small">' + esc(l.how) + '</div><ul>' + l.items.map(i => '<li>' + i.qty + ' &times; ' + esc(P[i.h].name) + '</li>').join('') + '</ul></div>').join('');
     } else {
       tags.push('multi-ship', 'corporate-gift');
       const hasA = S.items.some(it => !P[it.h].merch);
